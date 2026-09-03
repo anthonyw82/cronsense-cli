@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cronsense"
+version = "0.1.0"
+description = "Validating parser and pretty printer for cron expressions"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "anthonyw82" }]
+
+[project.scripts]
+cronsense = "cronsense.cli:main"
+
+[tool.setuptools]
+packages = ["cronsense"]
