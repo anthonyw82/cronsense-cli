@@ -93,6 +93,12 @@ pip install -e .
 cronsense "*/15 * * * *"
 ```
 
+## Running the tests
+
+```
+python -m unittest discover -s tests
+```
+
 ## License
 
 MIT, see LICENSE.
