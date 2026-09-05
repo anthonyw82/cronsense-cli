@@ -16,7 +16,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "expression",
         nargs="?",
-        help="cron expression, e.g. '*/15 * * * *' (reads from stdin if omitted)",
+        help=(
+            "cron expression, e.g. '*/15 * * * *' or '*/30 * * * * *' with "
+            "a leading seconds field (reads from stdin if omitted)"
+        ),
     )
     parser.add_argument(
         "--json",
@@ -41,17 +44,20 @@ def main(argv=None) -> int:
         return 1
 
     if args.json:
+        fields = {}
+        if cron.second is not None:
+            fields["second"] = str(cron.second)
+        fields["minute"] = str(cron.minute)
+        fields["hour"] = str(cron.hour)
+        fields["day_of_month"] = str(cron.day_of_month)
+        fields["month"] = str(cron.month)
+        fields["day_of_week"] = str(cron.day_of_week)
+
         payload = {
             "valid": True,
             "input": stripped,
             "normalized": str(cron),
-            "fields": {
-                "minute": str(cron.minute),
-                "hour": str(cron.hour),
-                "day_of_month": str(cron.day_of_month),
-                "month": str(cron.month),
-                "day_of_week": str(cron.day_of_week),
-            },
+            "fields": fields,
             "command": cron.command,
             "description": describe(cron),
         }

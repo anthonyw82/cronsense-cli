@@ -53,7 +53,7 @@ def _describe_field(field: CronField, labels=None) -> str:
     return ", ".join(_describe_part(part, labels) for part in field.parts)
 
 
-def _describe_time(minute: CronField, hour: CronField) -> str:
+def _describe_minute_hour(minute: CronField, hour: CronField) -> str:
     if _is_single_value_field(minute) and _is_single_value_field(hour):
         h = hour.parts[0].start
         m = minute.parts[0].start
@@ -77,8 +77,34 @@ def _describe_time(minute: CronField, hour: CronField) -> str:
     return f"at minute {_describe_field(minute)}, hour {_describe_field(hour)}"
 
 
+def _describe_time(second, minute: CronField, hour: CronField) -> str:
+    if second is None:
+        return _describe_minute_hour(minute, hour)
+
+    if _is_wildcard_field(second) and _is_wildcard_field(minute) and _is_wildcard_field(hour):
+        return "every second"
+
+    if _is_step_all_field(second) and _is_wildcard_field(minute) and _is_wildcard_field(hour):
+        return f"every {second.parts[0].step} seconds"
+
+    if _is_single_value_field(second) and _is_wildcard_field(minute) and _is_wildcard_field(hour):
+        return f"at second {second.parts[0].start} of every minute"
+
+    if (
+        _is_single_value_field(second)
+        and _is_single_value_field(minute)
+        and _is_single_value_field(hour)
+    ):
+        h = hour.parts[0].start
+        m = minute.parts[0].start
+        s = second.parts[0].start
+        return f"at {h:02d}:{m:02d}:{s:02d}"
+
+    return f"{_describe_minute_hour(minute, hour)}, second {_describe_field(second)}"
+
+
 def describe(cron: CronExpression) -> str:
-    clauses = [_describe_time(cron.minute, cron.hour)]
+    clauses = [_describe_time(cron.second, cron.minute, cron.hour)]
 
     if not _is_wildcard_field(cron.day_of_month):
         clauses.append(f"on day {_describe_field(cron.day_of_month)} of the month")

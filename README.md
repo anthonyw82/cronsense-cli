@@ -4,9 +4,10 @@ Cron expressions are terse enough that it's easy to write one that's
 syntactically fine but does the wrong thing: `0-59/5` versus `*/5`, a day-of-week
 range that quietly wraps because `7` and `0` are both Sunday, a month field
 with a typo'd name that some parsers silently ignore instead of rejecting.
-cronsense parses a 5-field cron expression, validates every field against
-what cron actually allows, and prints back what the schedule means in plain
-English (or JSON, for scripting).
+cronsense parses a cron expression (5-field, or 6-field with a leading
+seconds field), validates every field against what cron actually allows, and
+prints back what the schedule means in plain English (or JSON, for
+scripting).
 
 It does not run jobs or compute next-fire times yet - see the roadmap below.
 
@@ -24,6 +25,24 @@ at 00:00, on day 1 of the month, in January
 
 $ python -m cronsense.cli "90 * * * *"
 invalid: minute: 90 is outside the allowed range 0-59
+
+$ python -m cronsense.cli "*/30 * * * * *"
+every 30 seconds
+```
+
+### Seconds
+
+A schedule with six fields is read as `second minute hour day-of-month
+month day-of-week`, the same ordering used by cron variants that support
+sub-minute schedules. Five-field schedules are unaffected. Because the
+sixth field is only recognised when it plus the five before it all parse as
+valid schedule fields, a five-field schedule followed by a one-word command
+is still read the old way:
+
+```
+$ python -m cronsense.cli "0 3 * * * /usr/bin/backup"
+at 03:00
+runs: /usr/bin/backup
 ```
 
 ### JSON output
@@ -73,6 +92,7 @@ field-specific message on bad input.
 ## What's supported
 
 - Standard 5-field cron: minute, hour, day-of-month, month, day-of-week.
+- Optional 6-field form with a leading seconds field.
 - `*`, lists (`1,15,30`), ranges (`1-5`), and steps (`*/5`, `1-20/5`).
 - Month names (`JAN`-`DEC`) and day names (`SUN`-`SAT`), case-insensitive.
 - The day-of-week quirk where both `0` and `7` mean Sunday.

@@ -113,6 +113,47 @@ class RangeAndStepTests(unittest.TestCase):
             parse("1- * * * *")
 
 
+class SecondsFieldTests(unittest.TestCase):
+    def test_six_fields_are_parsed_as_seconds_first(self):
+        cron = parse("*/30 0 12 * * *")
+        self.assertEqual(str(cron.second), "*/30")
+        self.assertEqual(str(cron.minute), "0")
+        self.assertEqual(str(cron.hour), "12")
+
+    def test_six_field_expression_round_trips_with_seconds_first(self):
+        cron = parse("15 0 9 * * mon-fri")
+        self.assertEqual(str(cron), "15 0 9 * * 1-5")
+
+    def test_five_field_expression_has_no_seconds(self):
+        cron = parse("*/15 * * * *")
+        self.assertIsNone(cron.second)
+        self.assertFalse(cron.has_seconds)
+
+    def test_six_field_expression_has_seconds(self):
+        cron = parse("*/30 * * * * *")
+        self.assertTrue(cron.has_seconds)
+
+    def test_six_fields_with_trailing_command(self):
+        cron = parse("0 0 3 * * * /usr/bin/backup --full")
+        self.assertEqual(str(cron.second), "0")
+        self.assertEqual(cron.command, "/usr/bin/backup --full")
+
+    def test_word_command_after_five_fields_is_not_mistaken_for_seconds(self):
+        cron = parse("0 3 * * * /usr/bin/backup --full")
+        self.assertIsNone(cron.second)
+        self.assertEqual(cron.command, "/usr/bin/backup --full")
+
+    def test_invalid_seconds_value_is_rejected(self):
+        with self.assertRaises(CronValidationError):
+            parse("60 0 12 * * *")
+
+    def test_second_out_of_range_falls_back_and_is_still_rejected(self):
+        # '99' can't be a valid second, so this must fail as an invalid
+        # five-field expression too rather than silently succeeding.
+        with self.assertRaises(CronValidationError):
+            parse("99 0 12 * * *")
+
+
 class MalformedListTests(unittest.TestCase):
     def test_empty_item_in_list_is_rejected(self):
         with self.assertRaises(CronValidationError):

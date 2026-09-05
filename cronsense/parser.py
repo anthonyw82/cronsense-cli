@@ -1,8 +1,11 @@
-"""Parsing and validation for standard 5-field cron expressions.
+"""Parsing and validation for cron expressions.
 
-A cron schedule is five whitespace-separated fields (minute, hour,
-day-of-month, month, day-of-week). Anything after the fifth field is treated
-as the command that would be run, and is carried along unparsed.
+A cron schedule is normally five whitespace-separated fields (minute, hour,
+day-of-month, month, day-of-week). Some cron variants prepend a seconds
+field, giving six fields (second, minute, hour, day-of-month, month,
+day-of-week); this parser accepts that form too. Anything after the
+schedule fields is treated as the command that would be run, and is carried
+along unparsed.
 """
 
 from __future__ import annotations
@@ -43,6 +46,11 @@ FIELD_SPECS = (
     FieldSpec("day_of_week", 0, 6, DAY_NAMES, wrap_seven=True),
 )
 
+SECOND_SPEC = FieldSpec("second", 0, 59, None)
+
+# second, minute, hour, day_of_month, month, day_of_week
+FIELD_SPECS_WITH_SECONDS = (SECOND_SPEC,) + FIELD_SPECS
+
 
 @dataclass(frozen=True)
 class FieldPart:
@@ -77,11 +85,17 @@ class CronExpression:
     day_of_month: CronField
     month: CronField
     day_of_week: CronField
+    second: Optional[CronField] = None
     command: str = ""
 
     @property
+    def has_seconds(self) -> bool:
+        return self.second is not None
+
+    @property
     def fields(self):
-        return (self.minute, self.hour, self.day_of_month, self.month, self.day_of_week)
+        base = (self.minute, self.hour, self.day_of_month, self.month, self.day_of_week)
+        return (self.second,) + base if self.second is not None else base
 
     def __str__(self) -> str:
         schedule = " ".join(str(field) for field in self.fields)
@@ -149,6 +163,19 @@ def parse_field(spec: FieldSpec, text: str) -> CronField:
     return CronField(spec=spec, parts=parts)
 
 
+def _try_parse_fields(specs, tokens):
+    """Parse len(specs) leading tokens against specs, or return None if any fail.
+
+    Used to probe whether a run of tokens looks like a valid schedule before
+    committing to it, since a six-field schedule and a five-field schedule
+    followed by a numeric-looking command are otherwise indistinguishable.
+    """
+    try:
+        return tuple(parse_field(spec, token) for spec, token in zip(specs, tokens))
+    except CronValidationError:
+        return None
+
+
 def parse(expression: str) -> CronExpression:
     """Parse and validate a cron schedule, raising CronValidationError on bad input."""
     raw = expression.strip()
@@ -158,6 +185,16 @@ def parse(expression: str) -> CronExpression:
     tokens = raw.split()
     if len(tokens) < 5:
         raise CronValidationError(f"expected 5 schedule fields, found {len(tokens)}: '{raw}'")
+
+    if len(tokens) >= 6:
+        six_fields = _try_parse_fields(FIELD_SPECS_WITH_SECONDS, tokens[:6])
+        if six_fields is not None:
+            second, minute, hour, day_of_month, month, day_of_week = six_fields
+            command = " ".join(tokens[6:])
+            return CronExpression(
+                minute, hour, day_of_month, month, day_of_week,
+                second=second, command=command,
+            )
 
     field_tokens, command_tokens = tokens[:5], tokens[5:]
     fields = [parse_field(spec, token) for spec, token in zip(FIELD_SPECS, field_tokens)]
