@@ -45,6 +45,27 @@ at 03:00
 runs: /usr/bin/backup
 ```
 
+### Named schedules
+
+The usual cron nicknames are accepted in place of the five schedule fields,
+and expand to the equivalent standard schedule before being validated:
+
+| Nickname | Equivalent |
+| --- | --- |
+| `@yearly`, `@annually` | `0 0 1 1 *` |
+| `@monthly` | `0 0 1 * *` |
+| `@weekly` | `0 0 * * 0` |
+| `@daily`, `@midnight` | `0 0 * * *` |
+| `@hourly` | `0 * * * *` |
+
+```
+$ python -m cronsense.cli "@daily"
+at 00:00
+```
+
+`@reboot` is rejected: it means "run once at startup" rather than on a
+recurring schedule, so it has no equivalent set of cron fields.
+
 ### JSON output
 
 ```
@@ -96,6 +117,8 @@ field-specific message on bad input.
 - `*`, lists (`1,15,30`), ranges (`1-5`), and steps (`*/5`, `1-20/5`).
 - Month names (`JAN`-`DEC`) and day names (`SUN`-`SAT`), case-insensitive.
 - The day-of-week quirk where both `0` and `7` mean Sunday.
+- Named schedules: `@yearly`, `@annually`, `@monthly`, `@weekly`, `@daily`,
+  `@midnight`, `@hourly` (`@reboot` is rejected, see above).
 - A trailing command, if present, is preserved but not interpreted.
 
 ## Running from source

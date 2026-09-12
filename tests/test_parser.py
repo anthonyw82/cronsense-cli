@@ -154,6 +154,40 @@ class SecondsFieldTests(unittest.TestCase):
             parse("99 0 12 * * *")
 
 
+class NicknameTests(unittest.TestCase):
+    def test_hourly_expands_to_equivalent_fields(self):
+        self.assertEqual(str(parse("@hourly")), "0 * * * *")
+
+    def test_daily_and_midnight_are_equivalent(self):
+        self.assertEqual(str(parse("@daily")), str(parse("@midnight")))
+
+    def test_weekly_expands_to_equivalent_fields(self):
+        self.assertEqual(str(parse("@weekly")), "0 0 * * 0")
+
+    def test_monthly_expands_to_equivalent_fields(self):
+        self.assertEqual(str(parse("@monthly")), "0 0 1 * *")
+
+    def test_yearly_and_annually_are_equivalent(self):
+        self.assertEqual(str(parse("@yearly")), str(parse("@annually")))
+        self.assertEqual(str(parse("@yearly")), "0 0 1 1 *")
+
+    def test_nickname_is_case_insensitive(self):
+        self.assertEqual(str(parse("@DAILY")), "0 0 * * *")
+
+    def test_nickname_with_trailing_command(self):
+        cron = parse("@daily /usr/bin/backup --full")
+        self.assertEqual(str(cron), "0 0 * * * /usr/bin/backup --full")
+        self.assertEqual(cron.command, "/usr/bin/backup --full")
+
+    def test_reboot_is_rejected(self):
+        with self.assertRaises(CronValidationError):
+            parse("@reboot")
+
+    def test_unrecognised_nickname_is_rejected(self):
+        with self.assertRaises(CronValidationError):
+            parse("@fortnightly")
+
+
 class MalformedListTests(unittest.TestCase):
     def test_empty_item_in_list_is_rejected(self):
         with self.assertRaises(CronValidationError):

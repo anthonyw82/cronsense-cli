@@ -5,7 +5,9 @@ day-of-month, month, day-of-week). Some cron variants prepend a seconds
 field, giving six fields (second, minute, hour, day-of-month, month,
 day-of-week); this parser accepts that form too. Anything after the
 schedule fields is treated as the command that would be run, and is carried
-along unparsed.
+along unparsed. The `@hourly`/`@daily`/etc nicknames are also accepted in
+place of the five schedule fields; `@reboot` is rejected, since it isn't a
+schedule that can be expressed as fields.
 """
 
 from __future__ import annotations
@@ -50,6 +52,19 @@ SECOND_SPEC = FieldSpec("second", 0, 59, None)
 
 # second, minute, hour, day_of_month, month, day_of_week
 FIELD_SPECS_WITH_SECONDS = (SECOND_SPEC,) + FIELD_SPECS
+
+# The nicknames vixie-cron and its descendants accept in place of the five
+# schedule fields. Each expands to the equivalent standard schedule before
+# parsing continues, so the rest of the parser never has to know about them.
+NICKNAMES = {
+    "@yearly": "0 0 1 1 *",
+    "@annually": "0 0 1 1 *",
+    "@monthly": "0 0 1 * *",
+    "@weekly": "0 0 * * 0",
+    "@daily": "0 0 * * *",
+    "@midnight": "0 0 * * *",
+    "@hourly": "0 * * * *",
+}
 
 
 @dataclass(frozen=True)
@@ -183,6 +198,17 @@ def parse(expression: str) -> CronExpression:
         raise CronValidationError("expression is empty")
 
     tokens = raw.split()
+    nickname = tokens[0].lower()
+    if nickname == "@reboot":
+        raise CronValidationError(
+            "@reboot has no fixed schedule (it means 'run once at startup') "
+            "and can't be expressed as cron fields"
+        )
+    if nickname in NICKNAMES:
+        command = " ".join(tokens[1:])
+        schedule = NICKNAMES[nickname]
+        return parse(f"{schedule} {command}" if command else schedule)
+
     if len(tokens) < 5:
         raise CronValidationError(f"expected 5 schedule fields, found {len(tokens)}: '{raw}'")
 

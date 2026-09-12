@@ -18,7 +18,8 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         help=(
             "cron expression, e.g. '*/15 * * * *' or '*/30 * * * * *' with "
-            "a leading seconds field (reads from stdin if omitted)"
+            "a leading seconds field, or a nickname like '@daily' "
+            "(reads from stdin if omitted)"
         ),
     )
     parser.add_argument(
