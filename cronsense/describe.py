@@ -103,16 +103,37 @@ def _describe_time(second, minute: CronField, hour: CronField) -> str:
     return f"{_describe_minute_hour(minute, hour)}, second {_describe_field(second)}"
 
 
+def _describe_day_of_month(field: CronField) -> str:
+    # A bare "on day every N of the month" reads as broken English, so a
+    # step-only field ("*/N") needs its own phrasing rather than falling
+    # through to the generic "on day <value>" wording.
+    if _is_step_all_field(field):
+        return f"every {field.parts[0].step} days of the month"
+    return f"on day {_describe_field(field)} of the month"
+
+
+def _describe_month(field: CronField) -> str:
+    if _is_step_all_field(field):
+        return f"every {field.parts[0].step} months"
+    return f"in {_describe_field(field, MONTH_LABELS)}"
+
+
+def _describe_day_of_week(field: CronField) -> str:
+    if _is_step_all_field(field):
+        return f"every {field.parts[0].step} days of the week"
+    return f"on {_describe_field(field, DAY_LABELS)}"
+
+
 def describe(cron: CronExpression) -> str:
     clauses = [_describe_time(cron.second, cron.minute, cron.hour)]
 
     if not _is_wildcard_field(cron.day_of_month):
-        clauses.append(f"on day {_describe_field(cron.day_of_month)} of the month")
+        clauses.append(_describe_day_of_month(cron.day_of_month))
 
     if not _is_wildcard_field(cron.month):
-        clauses.append(f"in {_describe_field(cron.month, MONTH_LABELS)}")
+        clauses.append(_describe_month(cron.month))
 
     if not _is_wildcard_field(cron.day_of_week):
-        clauses.append(f"on {_describe_field(cron.day_of_week, DAY_LABELS)}")
+        clauses.append(_describe_day_of_week(cron.day_of_week))
 
     return ", ".join(clauses)

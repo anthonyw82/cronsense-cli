@@ -28,5 +28,47 @@ class SecondsDescriptionTests(unittest.TestCase):
         )
 
 
+class DateFieldDescriptionTests(unittest.TestCase):
+    def test_single_day_of_month(self):
+        self.assertEqual(
+            describe(parse("0 0 15 * *")), "at 00:00, on day 15 of the month"
+        )
+
+    def test_day_of_month_range(self):
+        self.assertEqual(
+            describe(parse("0 0 1-5 * *")), "at 00:00, on day 1 through 5 of the month"
+        )
+
+    def test_day_of_month_step_all(self):
+        self.assertEqual(
+            describe(parse("0 0 */5 * *")), "at 00:00, every 5 days of the month"
+        )
+
+    def test_named_month(self):
+        self.assertEqual(
+            describe(parse("0 0 1 jan *")), "at 00:00, on day 1 of the month, in January"
+        )
+
+    def test_month_step_all(self):
+        self.assertEqual(describe(parse("0 0 * */3 *")), "at 00:00, every 3 months")
+
+    def test_day_of_week_range(self):
+        self.assertEqual(
+            describe(parse("0 0 * * mon-fri")),
+            "at 00:00, on Monday through Friday",
+        )
+
+    def test_day_of_week_list(self):
+        self.assertEqual(
+            describe(parse("0 0 * * 1,3,5")),
+            "at 00:00, on Monday, Wednesday, Friday",
+        )
+
+    def test_day_of_week_step_all(self):
+        self.assertEqual(
+            describe(parse("0 0 * * */2")), "at 00:00, every 2 days of the week"
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
