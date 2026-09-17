@@ -5,6 +5,7 @@ import json
 import sys
 
 from .describe import describe
+from .nextrun import next_run
 from .parser import CronValidationError, parse
 
 
@@ -27,6 +28,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="emit machine-readable JSON instead of plain text",
     )
+    parser.add_argument(
+        "--next",
+        action="store_true",
+        help="also compute the next time the schedule will run, relative to now",
+    )
     return parser
 
 
@@ -43,6 +49,17 @@ def main(argv=None) -> int:
         else:
             print(f"invalid: {exc}", file=sys.stderr)
         return 1
+
+    next_dt = None
+    if args.next:
+        try:
+            next_dt = next_run(cron)
+        except CronValidationError as exc:
+            if args.json:
+                print(json.dumps({"valid": False, "input": stripped, "error": str(exc)}))
+            else:
+                print(f"invalid: {exc}", file=sys.stderr)
+            return 1
 
     if args.json:
         fields = {}
@@ -62,11 +79,15 @@ def main(argv=None) -> int:
             "command": cron.command,
             "description": describe(cron),
         }
+        if next_dt is not None:
+            payload["next_run"] = next_dt.isoformat()
         print(json.dumps(payload, indent=2))
     else:
         print(describe(cron))
         if cron.command:
             print(f"runs: {cron.command}")
+        if next_dt is not None:
+            print(f"next run: {next_dt.isoformat(sep=' ')}")
 
     return 0
 

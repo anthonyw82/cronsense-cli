@@ -5,11 +5,11 @@ syntactically fine but does the wrong thing: `0-59/5` versus `*/5`, a day-of-wee
 range that quietly wraps because `7` and `0` are both Sunday, a month field
 with a typo'd name that some parsers silently ignore instead of rejecting.
 cronsense parses a cron expression (5-field, or 6-field with a leading
-seconds field), validates every field against what cron actually allows, and
+seconds field), validates every field against what cron actually allows,
 prints back what the schedule means in plain English (or JSON, for
-scripting).
+scripting), and can work out the next time it will run.
 
-It does not run jobs or compute next-fire times yet - see the roadmap below.
+It does not run jobs itself.
 
 ## Usage
 
@@ -66,6 +66,20 @@ at 00:00
 `@reboot` is rejected: it means "run once at startup" rather than on a
 recurring schedule, so it has no equivalent set of cron fields.
 
+### Next run time
+
+`--next` computes the next time the schedule will fire, relative to now:
+
+```
+$ python -m cronsense.cli --next "30 8 * * 1-5"
+at 08:30, on Monday through Friday
+next run: 2024-01-02 08:30:00
+```
+
+The day-of-month and day-of-week fields follow cron's usual quirk: if both
+are restricted (neither is a bare `*`), a match on either one is enough to
+run, rather than requiring both.
+
 ### JSON output
 
 ```
@@ -100,15 +114,19 @@ it's carried along untouched and reported back under `"command"`.
 ## Library use
 
 ```python
-from cronsense import parse, describe
+from cronsense import parse, describe, next_run
 
 cron = parse("*/15 * * * *")
 print(describe(cron))       # "every 15 minutes"
 print(str(cron))            # normalized form: "*/15 * * * *"
+print(next_run(cron))       # next matching datetime, relative to now
 ```
 
 `parse()` raises `CronValidationError` (a `ValueError` subclass) with a
-field-specific message on bad input.
+field-specific message on bad input. `next_run()` takes an optional second
+argument to search relative to a specific datetime instead of now, and
+raises `CronValidationError` if the schedule can't match within the next
+eight years (for example day-of-month 30 in a schedule pinned to February).
 
 ## What's supported
 
@@ -120,6 +138,8 @@ field-specific message on bad input.
 - Named schedules: `@yearly`, `@annually`, `@monthly`, `@weekly`, `@daily`,
   `@midnight`, `@hourly` (`@reboot` is rejected, see above).
 - A trailing command, if present, is preserved but not interpreted.
+- Next-run-time calculation, including the day-of-month/day-of-week
+  either-or quirk.
 
 ## Running from source
 
